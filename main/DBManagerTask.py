@@ -76,6 +76,7 @@ class DBManagerTask(object):
         check_change = self.get_by_name("checkChange")
         check_change[task_type] = task_type
         check_change["timeStamp"] = int(time.time())
+        Utils.logError("------20190319 update_check check_change------%s" % check_change)
         self.update_task(check_change)
 
     def reset_check(self):
@@ -132,14 +133,16 @@ class DBManagerTask(object):
         task_type = task.get("type", None)
         task_switch = task.get("switch", "on")
         task_detail = json.dumps(task)
-
+        Utils.logError("------20190319 add_task task_detail------%s" % task_detail)
         try:
             sql = "INSERT INTO " + self.table_name + " values (?,?,?,?,?,?)"
             values = [(None, self.table_version, str(task_name), task_type, task_switch, task_detail)]
             conn = DBUtils.get_conn()
             success = DBUtils.save(conn, sql, values)
             if success is True:
+                Utils.logError("------20190319 add success------")
                 new_detail = self.get_by_name(task.get("name"))
+                Utils.logError("------20190319 new_detail------%s" % new_detail)
                 self.update_task(new_detail)
                 Utils.logInfo("===>update_check in add...")
                 self.update_check(task_type)
@@ -290,6 +293,7 @@ class DBManagerTask(object):
         Utils.logInfo("===>params: %s" % params)
 
         task_id = params.get("id", None)
+        Utils.logError("------20190319 update_task task_id------%s" % task_id)
         new_task_type = params.get("type", None)
         task_switch = params.get("switch", "on")
         if new_task_type == "check":
@@ -297,6 +301,7 @@ class DBManagerTask(object):
         if task_id is None:
             return None
         old_detail = self.get_one_task(task_id)
+        Utils.logError("------20190319 update_task old_detail------%s" % old_detail)
         old_task_type = old_detail.get("type", None)
         try:
             params_str = json.dumps(params)
@@ -308,12 +313,16 @@ class DBManagerTask(object):
             Utils.logInfo("===>sql: %s" % sql)
             conn = DBUtils.get_conn()
             success = DBUtils.update_all(conn, sql)
+            Utils.logError("------20190319 UPDATE success------")
             if success is True:
                 new_detail = self.get_one_task(task_id)
+                Utils.logError("------20190319 update_task new_detail------%s" % new_detail)
                 Utils.logInfo("===>new_detail after update: %s" % new_detail)
                 if new_task_type != "check":
+                    Utils.logError("------20190319 update_task new_task_type------%s" % new_task_type)
                     self.update_check(new_task_type)
                     if new_task_type != old_task_type:
+                        Utils.logError("------20190319 update_task old_task_type------%s" % old_task_type)
                         self.update_check(old_task_type)
                 return new_detail
             else:

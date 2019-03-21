@@ -42,11 +42,15 @@ class LightAdjustPannelMonitor(ThreadBase):
         self.check_pannel_listen()
 
     # 启动一个新的定时发送线程
-    def start_pannel_listen(self, addr, device_name):
+    def start_pannel_listen(self, addr, addr_ray_sense, device_name):
         if addr not in self.pannelDict:
-            Utils.logError("Start monitor at: %s" % addr)
-            Utils.logError("------PanelMonitor------")
-            monitor = PannelMonitor(target=self.send_pannel_cmd, args=(addr, device_name))
+            Utils.logDebug("Start monitor at: %s" % addr)
+            if addr_ray_sense == "":
+                Utils.logError("------PanelMonitor------")
+                monitor = PannelMonitor(target=self.send_pannel_cmd, args=(addr, addr_ray_sense, device_name))
+            else:
+                Utils.logError("------PanelRaySenseMonitor------")
+                monitor = PanelRaySenseMonitor(target=self.send_pannel_cmd, args=(addr, addr_ray_sense, device_name))
             monitor.setDaemon(True)
             monitor.start()
             self.pannelDict[addr] = monitor
@@ -60,22 +64,27 @@ class LightAdjustPannelMonitor(ThreadBase):
             self.pannelDict.pop(addr)
 
     # 将命令发出
-    def send_pannel_cmd(self, addr, deviceName):
-        Utils.logDebug("Send circadian mode to device: %s" % addr)
-        device_cmd_param = {"name": deviceName, "addr": addr, "value": {"state": 1},
-                            "type": DEVTYPENAME_LIGHTAJUST_PANNEL}
+    def send_pannel_cmd(self, addr, addr_ray_sense, deviceName):
+        Utils.logError("Send circadian mode to device: %s" % addr)
+        device_cmd_param = {"name": deviceName, "addr": addr, "addrRaySense": addr_ray_sense, "value": {"state": 1}, "type": DEVTYPENAME_LIGHTAJUST_PANNEL}
         pub.sendMessage(GlobalVars.PUB_CONTROL_DEVICE, cmd="controlDevice", controls=device_cmd_param)
 
     # 线程启动时监测网关内是否有处在节律模式的调光控制面板
     def check_pannel_listen(self):
         pannel_list = DBManagerDevice().getLightAdjustPannelByState(1)
+        addr_ray_sense = ""
         for pannel in pannel_list:
             addr = pannel.get("addr")
-            addr_ray_sense = pannel.get("addrRaySense", None)  # 光感地址
+            props = DBManagerDeviceProp().getDeviceByDevAddrAndType(addr, DEVTYPENAME_LIGHTAJUST_PANNEL)
+            link_light_sensor = props.get("linkLightSensor", None)
+            if link_light_sensor is not None:
+                device_status = link_light_sensor.get("deviceStatus", None)
+                if device_status is not None:
+                    addr_ray_sense = device_status.get("addr", "")
             Utils.logError("------check_pannel_listen addr_ray_sense: %s" % addr_ray_sense)
             device_name = pannel.get("name", "调光控制面板")
             if len(addr) == 20:
-                self.start_pannel_listen(addr, device_name)
+                self.start_pannel_listen(addr, addr_ray_sense, device_name)
 
 
 # 监控器线程类
@@ -92,8 +101,7 @@ class PannelMonitor(threading.Thread):
         while self.__running.is_set():
             if self.__target:
                 self.__target(*self.__args)
-                # time.sleep(900)  # 每15分钟执行一次
-                time.sleep(300)
+                time.sleep(900)  # 每15分钟执行一次
     def stop(self):
         self.__running.clear()
 

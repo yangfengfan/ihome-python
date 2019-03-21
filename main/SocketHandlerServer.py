@@ -3612,7 +3612,7 @@ class SocketHandlerServer(ThreadBase):
     def set_time_task(self, sparam):
 
         Utils.logDebug("===>set_time_task()...")
-
+        Utils.logError("------20190319 set_time_task sparam------%s" % str(sparam))
         if sparam is None:
             return ErrorCode.ERR_INVALID_REQUEST, None
 
@@ -3629,6 +3629,8 @@ class SocketHandlerServer(ThreadBase):
             if not trigger_time:
                 return ErrorCode.ERR_INVALID_REQUEST, None
             trigger_hour, trigger_min = trigger_time.split(":")
+            Utils.logError("------20190319 set_time_task trigger_hour------%s" % str(trigger_hour))
+            Utils.logError("------20190319 set_time_task trigger_min------%s" % str(trigger_min))
             local_time = time.localtime()
             current_hour, current_min = local_time.tm_hour, local_time.tm_min
             delta_hour = int(trigger_hour) - int(current_hour)
@@ -3638,18 +3640,22 @@ class SocketHandlerServer(ThreadBase):
                 delta_seconds += 24*3600
             elif delta_seconds == 0:
                 delta_seconds = 30
-            current_ts = self.cast_time(int(time.time()))
+            current_ts = int(time.time()//60) * 60
             taskTimeStamp = current_ts + delta_seconds
             sparam["taskTimeStamp"] = taskTimeStamp
+            Utils.logError("------20190319 ----end---sparam---%s" % str(sparam))
 
         try:
+            Utils.logError("------20190319 set_time_task do update_task---====task_id ---=%s" % str(task_id))
             if task_id is None:
                 Utils.logDebug("===>set_time_task, task_id is None")
                 old_task = DBManagerTask().get_by_name(mode_id)
                 if old_task:
+                    Utils.logError("------20190319 set_time_task do update_task------")
                     sparam["id"] = old_task.get("id")
                     DBManagerTask().update_task(sparam)
                 else:
+                    Utils.logError("------20190319 set_time_task do add_task------")
                     DBManagerTask().add_task(sparam)
             else:
                 Utils.logDebug("===>set_time_task, update_task(sparam)")
@@ -3657,7 +3663,7 @@ class SocketHandlerServer(ThreadBase):
             return ErrorCode.SUCCESS, None
         except Exception as err:
             Utils.logError("Set time task error: %s" % err)
-            return ErrorCode.ERR_SETTIMETASH_EXCEPTION, None
+            return ErrorCode.ERR_GENERAL, None
 
     def switch_time_task(self, sparam):
 
@@ -3993,26 +3999,29 @@ class SocketHandlerServer(ThreadBase):
                         mode_dict[room_name] = mode_dict.pop(room_id)
         return ErrorCode.SUCCESS, mode_dict
 
-    # 计算时间，省去秒数
-    def cast_time(self, timestamp):
-        time_array = time.localtime(timestamp)
-        time_str = time.strftime("%Y-%m-%d-%H-%M-%S", time_array)
-        time_arr = time_str.split("-")
-        time_arr[-1] = '0'
-        time_str_r = ''
-        for index, s in enumerate(time_arr):
-            if index == 0:
-                time_str_r = time_str_r + s
-            else:
-                time_str_r = time_str_r + "-" + s
-        timeArray = time.strptime(time_str_r, "%Y-%m-%d-%H-%M-%S")
-        return int(time.mktime(timeArray))
-
     def _check_device_list(self, item):
         devicelist = item.get('devicelist', [])
         if not devicelist:
             devicelist = item.get('deviceList', [])
         return devicelist
+
+    # 计算时间，省去秒数
+    # def cast_time(self, timestamp):
+    #     time_array = time.localtime(timestamp)
+    #     time_str = time.strftime("%Y-%m-%d-%H-%M-%S", time_array)
+    #     time_arr = time_str.split("-")
+    #     time_arr[-1] = '0'
+    #     time_str_r = ''
+    #     for index, s in enumerate(time_arr):
+    #         if index == 0:
+    #             time_str_r = time_str_r + s
+    #         else:
+    #             time_str_r = time_str_r + "-" + s
+    #     Utils.logError("------20190319 ----end---time_str_r---%s" % time_str_r)
+    #     timeArray = datetime.datetime.strptime(time_str_r, "%Y-%m-%d-%H-%M-%S")
+    #     return int(time.mktime(timeArray))
+
+
 
 if __name__ == '__main__':
     s = SocketHandlerServer(105)

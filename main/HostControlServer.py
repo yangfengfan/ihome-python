@@ -95,7 +95,7 @@ class HostControlServer(SocketThreadBase):
                 start_exec = time.clock()
                 self.controlDevice(ctrlObj)
                 end_exec = time.clock()
-                Utils.logInfo("Driver handles this command consumes %s seconds"%(str(end_exec-start_exec)))
+                Utils.logInfo("Driver handles this command consumes %s seconds" % str(end_exec-start_exec))
             except:
                 Utils.logException('sendCommand2Driver.')
 
@@ -553,25 +553,31 @@ class HostControlServer(SocketThreadBase):
                 # 调光灯控制面板
         if devType == DEVTYPENAME_LIGHTAJUST_PANNEL:
             Utils.logError("----controlDevice----DEVTYPENAME_LIGHTAJUST_PANNEL--deviceVal------%s" % deviceVal)
-            link_only_one_switch = deviceVal.get("linkOnlyOneSwitch", None)
+            Utils.logError("----controlDevice----DEVTYPENAME_LIGHTAJUST_PANNEL--devAddr------%s" % devAddr)
+            props = DBManagerDeviceProp().getDeviceByDevAddrAndType(devAddr, devType)
+            Utils.logError("----controlDevice----DEVTYPENAME_LIGHTAJUST_PANNEL--props------%s" % props)
+            link_only_one_switch = props.get("linkOnlyOneSwitch", None)
             Utils.logError("------link_only_one_switch------%s" % link_only_one_switch)
             if link_only_one_switch is not None:
                 device_status = link_only_one_switch.get("deviceStatus", None)
                 if device_status is not None:
-                    address_switch = link_only_one_switch.get("addr", None)
+                    address_switch = device_status.get("addr", None)
+                    Utils.logError("------link_only_one_switch---address_switch---%s" % address_switch)
                     linked = device_status.get("linked", {})
                     link1 = linked.get("link1", None)
-                    link2 = value.get("link2", None)
-                    link3 = value.get("link3", None)
-                    link4 = value.get("link4", None)
-                    if link1 is not None and link1 == 1:
+                    link2 = linked.get("link2", None)
+                    link3 = linked.get("link3", None)
+                    link4 = linked.get("link4", None)
+                    light_key = ""
+                    if link1 is not None and int(link1) == 1:
                         light_key = "state"
-                    elif link2 is not None and link2 == 1:
+                    elif link2 is not None and int(link2) == 1:
                         light_key = "state2"
-                    elif link3 is not None and link3 == 1:
+                    elif link3 is not None and int(link3) == 1:
                         light_key = "state3"
-                    elif link4 is not None and link4 == 1:
+                    elif link4 is not None and int(link4) == 1:
                         light_key = "state4"
+                    Utils.logError("------cur_switch--light_key---%s" % light_key)
                     cur_switch = DBManagerDevice().getDeviceByDevId(address_switch)
                     Utils.logError("------cur_switch------%s" % cur_switch)
                     cur_name = cur_switch.get("name", None)
@@ -592,51 +598,55 @@ class HostControlServer(SocketThreadBase):
             if state == 1:
                 Utils.logError("------RaySense is exist------")
                 # 光感数值范围在2000-4000是正常范围,小于2000时候要开灯;大于4000的时候要判断是否有灯开着,有灯的情况下要关灯或者换其他灯
-                ray_address = "E5EDD212004B12000000"
-                ray_normal_low = 500
-                ray_normal_high = 10000
-                now_time = time.localtime(time.time())
-                Utils.logError("------HostControlServer tmTime------%s" % now_time)
-                now_hour = now_time[3]
-                cur_ray = DBManagerDevice().getDeviceByDevId(ray_address)
-                Utils.logError("------cur_ray is------%s" % cur_ray)
-                value_ray = cur_ray.get("value", {})
-                ray = value_ray.get("ray", None)
-                if ray is not None:
-                    if now_hour < 5 or now_hour > 19:  # 凌晨0-5或夜晚19-24
-                        if ray < ray_normal_low:  # 开灯
-                            Utils.logError("------凌晨0-5或夜晚19-24 光感值低于标准低------")
-                            value['coldRate'] = 5
-                            value['warmRate'] = 30
-                            deviceVal['value'] = value
-                        elif ray > ray_normal_high:
-                            Utils.logError("------凌晨0-5或夜晚19-24 光感值高于标准高------")
-                            value['coldRate'] = 0
-                            value['warmRate'] = 0
-                            deviceVal['value'] = value
-                    elif now_hour > 8 and now_hour < 17:  # 白天8-17
-                        if ray < ray_normal_low:  # 开灯
-                            Utils.logError("------白天8-17 光感值低于标准低------")
-                            value['coldRate'] = 15
-                            value['warmRate'] = 60
-                            deviceVal['value'] = value
-                        elif ray > ray_normal_high:
-                            Utils.logError("------白天8-17 光感值高于标准高------")
-                            value['coldRate'] = 0
-                            value['warmRate'] = 0
-                            deviceVal['value'] = value
-                    else:  # 清晨5-8或傍晚17-19
-                        if ray < ray_normal_low:  # 开灯
-                            Utils.logError("------清晨5-8或傍晚17-19 光感值低于标准低------")
-                            value['coldRate'] = 10
-                            value['warmRate'] = 45
-                            deviceVal['value'] = value
-                        elif ray > ray_normal_high:
-                            Utils.logError("------清晨5-8或傍晚17-19 光感值高于标准高------")
-                            value['coldRate'] = 0
-                            value['warmRate'] = 0
-                            deviceVal['value'] = value
-                Utils.rayLogError("ray_sense_value is: %d" % ray)
+                link_light_sensor = props.get("linkLightSensor", None)
+                if link_light_sensor is not None:
+                    device_status = link_light_sensor.get("deviceStatus", None)
+                    if device_status is not None:
+                        ray_address = device_status.get("addr", None)
+                        ray_normal_low = 500
+                        ray_normal_high = 2500
+                        now_time = time.localtime(time.time())
+                        Utils.logError("------HostControlServer tmTime------%s" % now_time)
+                        now_hour = now_time[3]
+                        cur_ray = DBManagerDevice().getDeviceByDevId(ray_address)
+                        Utils.logError("------cur_ray is------%s" % cur_ray)
+                        value_ray = cur_ray.get("value", {})
+                        ray = value_ray.get("ray", None)
+                        if ray is not None:
+                            if now_hour < 5 or now_hour > 19:  # 凌晨0-5或夜晚19-24
+                                if ray < ray_normal_low:  # 开灯
+                                    Utils.logError("------凌晨0-5或夜晚19-24 光感值低于标准低------")
+                                    value['coldRate'] = 5
+                                    value['warmRate'] = 30
+                                    deviceVal['value'] = value
+                                elif ray > ray_normal_high:
+                                    Utils.logError("------凌晨0-5或夜晚19-24 光感值高于标准高------")
+                                    value['coldRate'] = 0
+                                    value['warmRate'] = 0
+                                    deviceVal['value'] = value
+                            elif now_hour > 8 and now_hour < 17:  # 白天8-17
+                                if ray < ray_normal_low:  # 开灯
+                                    Utils.logError("------白天8-17 光感值低于标准低------")
+                                    value['coldRate'] = 15
+                                    value['warmRate'] = 60
+                                    deviceVal['value'] = value
+                                elif ray > ray_normal_high:
+                                    Utils.logError("------白天8-17 光感值高于标准高------")
+                                    value['coldRate'] = 0
+                                    value['warmRate'] = 0
+                                    deviceVal['value'] = value
+                            else:  # 清晨5-8或傍晚17-19
+                                if ray < ray_normal_low:  # 开灯
+                                    Utils.logError("------清晨5-8或傍晚17-19 光感值低于标准低------")
+                                    value['coldRate'] = 10
+                                    value['warmRate'] = 45
+                                    deviceVal['value'] = value
+                                elif ray > ray_normal_high:
+                                    Utils.logError("------清晨5-8或傍晚17-19 光感值高于标准高------")
+                                    value['coldRate'] = 0
+                                    value['warmRate'] = 0
+                                    deviceVal['value'] = value
+                Utils.rayLogError("ray_sense_value is: %s" % ray)
 
                 # 节律模式
                 # addrRaySense = deviceVal.get("addrRaySense");

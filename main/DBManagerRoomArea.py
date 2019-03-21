@@ -115,22 +115,47 @@ class DBManagerRoomArea(object):
                 newName = detailObj.get("name")
 
                 if newName != oldName:
+                    # # 区域名称修改后，区域内的设备的属性表内的区域名称也要跟着修改
+                    # devices = DBManagerDeviceProp().getDevicePropertyBy(room, area, None)
+                    #
+                    # if devices is not None and len(devices) > 0:
+                    #     for device in devices:
+                    #
+                    #         device["areaname"] = newName
+                    #         #DBManagerDeviceProp().saveDeviceProperty(device)
+                    #     DBManagerDeviceProp().saveDeviceBatch(devices, devOpt=True)
+                    #
+                    # # 更新 tbl_room 表中对应房间的area信息 --- 20170703 chenjc
+                    # roomProp = DBManagerRoom().getRoomByRoomId(room)
+                    # area_list = roomProp.get("areas", [])
+                    # for areaProp in area_list:
+                    #     if areaProp.get("areaId") == area:
+                    #         areaProp["name"] = newName
+                    # roomProp["areas"] = area_list
+                    # DBManagerRoom().saveRoomProperty(roomProp)
+
                     # 区域名称修改后，区域内的设备的属性表内的区域名称也要跟着修改
-                    devices = DBManagerDeviceProp().getDevicePropertyBy(room, area, None)
+                    devices = DBManagerDeviceProp().getDevicePropertyBy(None, None, "all")
+
                     if devices is not None and len(devices) > 0:
                         for device in devices:
-                            device["areaname"] = newName
+                            Utils.logError('--------device====== %s' % str(device))
+                            if device.get("roomId") == room and device.get("areaId") == area:
+                                Utils.logError('--------device["areaname"]====== %s' % str(device["areaname"]))
+                                device["areaname"] = newName
+                            if device.get("linkOnlyOneSwitch"):
+                                if device.get("linkOnlyOneSwitch").get("deviceProp"):
+                                    if device.get("linkOnlyOneSwitch").get("deviceProp").get("roomId") == room \
+                                            and device.get("linkOnlyOneSwitch").get("deviceProp").get("areaId") == area:
+                                        Utils.logError('--------device.get("linkOnlyOneSwitch").get("deviceProp")["areaname"]====== %s' % str(device.get("linkOnlyOneSwitch").get("deviceProp")["areaname"]))
+                                        device.get("linkOnlyOneSwitch").get("deviceProp")["areaname"] = newName
+                            if device.get("linkLightSensor"):
+                                if device.get("linkLightSensor").get("deviceProp"):
+                                    if device.get("linkLightSensor").get("deviceProp").get("roomId") == room \
+                                            and device.get("linkLightSensor").get("deviceProp").get("areaId") == area:
+                                        device.get("linkLightSensor").get("deviceProp")["areaname"] = newName
                             #DBManagerDeviceProp().saveDeviceProperty(device)
                         DBManagerDeviceProp().saveDeviceBatch(devices, devOpt=True)
-
-                    # 更新 tbl_room 表中对应房间的area信息 --- 20170703 chenjc
-                    roomProp = DBManagerRoom().getRoomByRoomId(room)
-                    area_list = roomProp.get("areas", [])
-                    for areaProp in area_list:
-                        if areaProp.get("areaId") == area:
-                            areaProp["name"] = newName
-                    roomProp["areas"] = area_list
-                    DBManagerRoom().saveRoomProperty(roomProp)
 
             if success == True:
                 return detailObj

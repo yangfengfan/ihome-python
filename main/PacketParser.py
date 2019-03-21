@@ -1155,7 +1155,7 @@ class PacketParser:
 
             elif devTypeId == DEVTYPEID_LIGHTAJUST_PANNEL:  # 调光控制面板
                 state = int(value.get("state", 0))
-                if state == 1:
+                if state == 1 and value.get("coldRate") is not None and value.get("warmRate") is not None:
                     # 节律模式还需要2个占空比
                     cold_rate = int(value.get("coldRate"))
                     warm_rate = int(value.get("warmRate"))
@@ -1972,6 +1972,8 @@ class PacketParser:
             elif (devTypeId == DEVTYPEID_RAY_SENSOR):
                 state, ray = struct.unpack("=BH", buffer[0:3])
                 value = {'state': state, 'ray': ray}
+                if ray > 60000:
+                    Utils.logError("------PackParser------buffer=%s" % buffer)
             elif(devTypeId == DEVTYPEID_SOS_SENSOR):
                 state = struct.unpack("=B", buffer[0:1])
                 value = {'state':state[0]}

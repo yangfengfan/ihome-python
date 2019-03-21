@@ -594,12 +594,19 @@ class HostReportServer(ThreadBase):
                 if devAddr:
                     value = deviceVal.get("value", {})
                     state = int(value.get("state", 6))
+                    addr_ray_sense = ""
+                    props = DBManagerDeviceProp().getDeviceByDevAddrAndType(devAddr, DEVTYPENAME_LIGHTAJUST_PANNEL)
+                    link_light_sensor = props.get("linkLightSensor", None)
+                    if link_light_sensor is not None:
+                        device_status = link_light_sensor.get("deviceStatus", None)
+                        if device_status is not None:
+                            addr_ray_sense = device_status.get("addr", "")
                     if state == 1:
-                        Utils.logError("------set in rhythm mode------")
+                        # Utils.logError("------set in rhythm mode------")
                         devName = deviceVal.get("name", "调光控制面板")
-                        pub.sendMessage(GlobalVars.PUB_START_PANNEL_LISTEN, addr=devAddr, device_name=devName)
+                        pub.sendMessage(GlobalVars.PUB_START_PANNEL_LISTEN, addr=devAddr, addr_ray_sense=addr_ray_sense, device_name=devName)
                     else:
-                        Utils.logError("------not in rhythm mode------")
+                        # Utils.logError("------not in rhythm mode------")
                         pub.sendMessage(GlobalVars.PUB_STOP_PANNEL_LISTEN, addr=devAddr)
 
             if devTypeName == DEVTYPENAME_WUHENG_SYSTEM:
